@@ -8,17 +8,28 @@ const GestorDespesesViatge = () => {
   const [novaDespesa, setNovaDespesa] = useState({ concepte: '', import: '', pagador: '' });
   const [editantTitol, setEditantTitol] = useState(false);
   const [editantParticipants, setEditantParticipants] = useState(false);
+  const [nouParticipant, setNouParticipant] = useState('');
 
-const afegirDespesa = () => {
-  if (novaDespesa.concepte && novaDespesa.import && novaDespesa.pagador) {
-    setDespeses([...despeses, { ...novaDespesa, id: Date.now() }]);
-    setNovaDespesa({ concepte: '', import: '', pagador: '' });
-  }
-};
-
+  const afegirDespesa = () => {
+    if (novaDespesa.concepte && novaDespesa.import && novaDespesa.pagador) {
+      setDespeses([...despeses, { ...novaDespesa, id: Date.now() }]);
+      setNovaDespesa({ concepte: '', import: '', pagador: '' });
+    }
+  };
 
   const eliminarDespesa = (id) => {
     setDespeses(despeses.filter(despesa => despesa.id !== id));
+  };
+
+  const afegirParticipant = () => {
+    if (nouParticipant && !participants.includes(nouParticipant)) {
+      setParticipants([...participants, nouParticipant]);
+      setNouParticipant('');
+    }
+  };
+
+  const eliminarParticipant = (participant) => {
+    setParticipants(participants.filter(p => p !== participant));
   };
 
   const calcularBalanc = () => {
@@ -64,17 +75,34 @@ const afegirDespesa = () => {
       <div>
         {editantParticipants ? (
           <div className="mb-4">
-            {participants.map((participant, index) => (
+            <div className="mb-4">
               <input
-                key={index}
-                value={participant}
-                onChange={(e) => {
-                  const novaLlista = [...participants];
-                  novaLlista[index] = e.target.value;
-                  setParticipants(novaLlista);
-                }}
+                type="text"
+                value={nouParticipant}
+                onChange={(e) => setNouParticipant(e.target.value)}
+                placeholder="Nou participant"
                 className="mb-2"
               />
+              <button onClick={afegirParticipant} className="px-4 py-2 text-white bg-green-500 rounded">
+                Afegir Participant
+              </button>
+            </div>
+            {participants.map((participant, index) => (
+              <div key={index} className="flex items-center mb-2">
+                <input
+                  type="text"
+                  value={participant}
+                  onChange={(e) => {
+                    const novaLlista = [...participants];
+                    novaLlista[index] = e.target.value;
+                    setParticipants(novaLlista);
+                  }}
+                  className="flex-grow"
+                />
+                <button onClick={() => eliminarParticipant(participant)} className="ml-2">
+                  <Trash2 className="h-4 w-4 text-red-600" />
+                </button>
+              </div>
             ))}
             <button onClick={() => setEditantParticipants(false)} className="mt-2">
               <Check className="h-4 w-4 mr-2" /> Guardar Participants
