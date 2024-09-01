@@ -4,11 +4,16 @@ import { db, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from './fi
 const GestorDespesesViatge = () => {
   const [titol, setTitol] = useState("Viatge sense nom");
   const [editantTitol, setEditantTitol] = useState(false);
-  const [participants, setParticipants] = useState(["Participant 1", "Participant 2"]);
+  const [participants, setParticipants] = useState([]);
   const [nouParticipant, setNouParticipant] = useState('');
   const [despeses, setDespeses] = useState([]);
   const [novaDespesa, setNovaDespesa] = useState({ concepte: '', import: '', pagador: '' });
   const [editantDespesa, setEditantDespesa] = useState(null);
+
+  useEffect(() => {
+    setParticipants([]); // Clear participants on mount
+    carregarDespeses();
+  }, []);
 
   useEffect(() => {
     carregarDespeses();
