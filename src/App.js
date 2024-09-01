@@ -1,24 +1,47 @@
-import React, { useState } from 'react';
-import { PlusCircle, Trash2, Edit2, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { db, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from './firebase';
 
 const GestorDespesesViatge = () => {
-  const [titol, setTitol] = useState("Tothom ho sap i es profecia");
-  const [participants, setParticipants] = useState(["Pol", "Pau", "Marc"]);
+  const [titol, setTitol] = useState("Viatge sense nom");
+  const [editantTitol, setEditantTitol] = useState(false);
+  const [participants, setParticipants] = useState(["Participant 1", "Participant 2"]);
+  const [nouParticipant, setNouParticipant] = useState('');
   const [despeses, setDespeses] = useState([]);
   const [novaDespesa, setNovaDespesa] = useState({ concepte: '', import: '', pagador: '' });
-  const [editantTitol, setEditantTitol] = useState(false);
-  const [editantParticipants, setEditantParticipants] = useState(false);
-  const [nouParticipant, setNouParticipant] = useState('');
+  const [editantDespesa, setEditantDespesa] = useState(null);
 
-  const afegirDespesa = () => {
+  useEffect(() => {
+    carregarDespeses();
+  }, []);
+
+  const carregarDespeses = async () => {
+    const querySnapshot = await getDocs(collection(db, "despeses"));
+    const dadesDespeses = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    }));
+    setDespeses(dadesDespeses);
+  };
+
+  const afegirDespesa = async () => {
     if (novaDespesa.concepte && novaDespesa.import && novaDespesa.pagador) {
-      setDespeses([...despeses, { ...novaDespesa, id: Date.now() }]);
+      await addDoc(collection(db, "despeses"), novaDespesa);
+      await carregarDespeses();
       setNovaDespesa({ concepte: '', import: '', pagador: '' });
     }
   };
 
-  const eliminarDespesa = (id) => {
-    setDespeses(despeses.filter(despesa => despesa.id !== id));
+  const editarDespesa = async (id) => {
+    if (editantDespesa) {
+      await updateDoc(doc(db, "despeses", id), editantDespesa);
+      setEditantDespesa(null);
+      await carregarDespeses();
+    }
+  };
+
+  const eliminarDespesa = async (id) => {
+    await deleteDoc(doc(db, "despeses", id));
+    await carregarDespeses();
   };
 
   const afegirParticipant = () => {
@@ -28,148 +51,206 @@ const GestorDespesesViatge = () => {
     }
   };
 
-  const eliminarParticipant = (participant) => {
-    setParticipants(participants.filter(p => p !== participant));
+  const eliminarParticipant = (participantAEliminar) => {
+    setParticipants(participants.filter(p => p !== participantAEliminar));
   };
 
-  const calcularBalanc = () => {
+  const calcularDeutes = () => {
     const total = despeses.reduce((sum, despesa) => sum + parseFloat(despesa.import), 0);
     const perPersona = total / participants.length;
-    const balanc = Object.fromEntries(participants.map(p => [p, 0]));
+    const deutes = Object.fromEntries(participants.map(p => [p, 0]));
 
     despeses.forEach(despesa => {
-      balanc[despesa.pagador] += parseFloat(despesa.import);
+      deutes[despesa.pagador] += parseFloat(despesa.import);
     });
 
     return Object.fromEntries(
-      Object.entries(balanc).map(([nom, valor]) => [nom, valor - perPersona])
+      Object.entries(deutes).map(([nom, pagat]) => [nom, pagat - perPersona])
     );
   };
 
-  const balanc = calcularBalanc();
+  const deutes = calcularDeutes();
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-6">
-      <div>
+    <div className="container mx-auto p-4 max-w-4xl">
+      <div className="mb-8 text-center">
         {editantTitol ? (
-          <div className="flex items-center">
-            <input
-              type="text"
-              value={titol}
-              onChange={(e) => setTitol(e.target.value)}
-              className="text-2xl font-bold text-center"
-            />
-            <button onClick={() => setEditantTitol(false)} className="ml-2">
-              <Check className="h-4 w-4" />
-            </button>
-          </div>
+          <input
+            type="text"
+            value={titol}
+            onChange={(e) => setTitol(e.target.value)}
+            onBlur={() => setEditantTitol(false)}
+            className="text-3xl font-bold text-center w-full p-2 border-b-2 border-blue-500 focus:outline-none"
+            autoFocus
+          />
         ) : (
-          <div className="flex items-center justify-center">
-            <h2 className="text-2xl font-bold text-center mb-6">{titol}</h2>
-            <button onClick={() => setEditantTitol(true)} className="ml-2" variant="ghost" size="sm">
-              <Edit2 className="h-4 w-4" />
-            </button>
-          </div>
+          <h1 
+            className="text-3xl font-bold cursor-pointer hover:text-blue-600" 
+            onClick={() => setEditantTitol(true)}
+          >
+            {titol}
+          </h1>
         )}
       </div>
-      <div>
-        {editantParticipants ? (
-          <div className="mb-4">
-            <div className="mb-4">
-              <input
-                type="text"
-                value={nouParticipant}
-                onChange={(e) => setNouParticipant(e.target.value)}
-                placeholder="Nou participant"
-                className="mb-2"
-              />
-              <button onClick={afegirParticipant} className="px-4 py-2 text-white bg-green-500 rounded">
-                Afegir Participant
-              </button>
-            </div>
-            {participants.map((participant, index) => (
-              <div key={index} className="flex items-center mb-2">
-                <input
-                  type="text"
-                  value={participant}
-                  onChange={(e) => {
-                    const novaLlista = [...participants];
-                    novaLlista[index] = e.target.value;
-                    setParticipants(novaLlista);
-                  }}
-                  className="flex-grow"
-                />
-                <button onClick={() => eliminarParticipant(participant)} className="ml-2">
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </button>
-              </div>
-            ))}
-            <button onClick={() => setEditantParticipants(false)} className="mt-2">
-              <Check className="h-4 w-4 mr-2" /> Guardar Participants
-            </button>
-          </div>
-        ) : (
-          <button onClick={() => setEditantParticipants(true)} className="mb-4" variant="outline">
-            <Edit2 className="h-4 w-4 mr-2" /> Editar Participants
-          </button>
-        )}
 
+      <div className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Participants</h2>
         <div className="flex flex-wrap gap-2 mb-4">
-          <input
-            placeholder="Concepte"
-            value={novaDespesa.concepte}
-            onChange={(e) => setNovaDespesa({ ...novaDespesa, concepte: e.target.value })}
-            className="flex-grow"
-          />
-          <input
-            type="number"
-            placeholder="Import"
-            value={novaDespesa.import}
-            onChange={(e) => setNovaDespesa({ ...novaDespesa, import: e.target.value })}
-            className="w-24"
-          />
-          <select
-            className="border rounded px-2 py-1"
-            value={novaDespesa.pagador}
-            onChange={(e) => setNovaDespesa({ ...novaDespesa, pagador: e.target.value })}
-          >
-            <option value="">Pagador</option>
-            {participants.map((participant, index) => (
-              <option key={index} value={participant}>{participant}</option>
-            ))}
-          </select>
-          <button onClick={afegirDespesa} className="px-4 py-2 text-white bg-blue-500 rounded">
-            Afegir Despesa
-          </button>
-        </div>
-
-        <div>
-          <h3 className="text-xl font-semibold mb-4">Despeses</h3>
-          {despeses.map(despesa => (
-            <div key={despesa.id} className="flex justify-between items-center mb-2 p-2 border rounded">
-              <div>{despesa.concepte}</div>
-              <div>{despesa.import} €</div>
-              <div>{despesa.pagador}</div>
-              <button onClick={() => eliminarDespesa(despesa.id)} className="ml-2">
-                <Trash2 className="h-4 w-4" />
+          {participants.map((participant, index) => (
+            <div key={index} className="bg-blue-100 px-3 py-1 rounded-full flex items-center">
+              <span>{participant}</span>
+              <button 
+                onClick={() => eliminarParticipant(participant)}
+                className="ml-2 text-red-500 font-bold"
+              >
+                ×
               </button>
             </div>
           ))}
         </div>
-
-        <div className="mt-6">
-          <h3 className="text-xl font-semibold mb-4">Balanç</h3>
-          <div>
-            {Object.entries(balanc).map(([participant, valor]) => (
-              <div key={participant} className="flex justify-between">
-                <span>{participant}</span>
-                <span className={valor >= 0 ? 'text-green-600' : 'text-red-600'}>
-                  {valor.toFixed(2)} €
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="flex">
+          <input
+            type="text"
+            value={nouParticipant}
+            onChange={(e) => setNouParticipant(e.target.value)}
+            placeholder="Nou participant"
+            className="flex-grow p-2 border rounded-l"
+          />
+          <button 
+            onClick={afegirParticipant}
+            className="bg-green-500 text-white px-4 py-2 rounded-r hover:bg-green-600"
+          >
+            Afegir
+          </button>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Despeses</h2>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="p-2 text-left">Concepte</th>
+              <th className="p-2 text-left">Import</th>
+              <th className="p-2 text-left">Pagador</th>
+              <th className="p-2 text-left">Accions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {despeses.map((despesa) => (
+              <tr key={despesa.id} className="border-b">
+                <td className="p-2">
+                  {editantDespesa?.id === despesa.id ? (
+                    <input
+                      type="text"
+                      value={editantDespesa.concepte}
+                      onChange={(e) => setEditantDespesa({...editantDespesa, concepte: e.target.value})}
+                      className="w-full p-1 border rounded"
+                    />
+                  ) : (
+                    despesa.concepte
+                  )}
+                </td>
+                <td className="p-2">
+                  {editantDespesa?.id === despesa.id ? (
+                    <input
+                      type="number"
+                      value={editantDespesa.import}
+                      onChange={(e) => setEditantDespesa({...editantDespesa, import: e.target.value})}
+                      className="w-full p-1 border rounded"
+                    />
+                  ) : (
+                    `${despesa.import} €`
+                  )}
+                </td>
+                <td className="p-2">
+                  {editantDespesa?.id === despesa.id ? (
+                    <select
+                      value={editantDespesa.pagador}
+                      onChange={(e) => setEditantDespesa({...editantDespesa, pagador: e.target.value})}
+                      className="w-full p-1 border rounded"
+                    >
+                      {participants.map((participant, index) => (
+                        <option key={index} value={participant}>{participant}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    despesa.pagador
+                  )}
+                </td>
+                <td className="p-2">
+                  {editantDespesa?.id === despesa.id ? (
+                    <button 
+                      onClick={() => editarDespesa(despesa.id)}
+                      className="bg-green-500 text-white px-2 py-1 rounded mr-2 hover:bg-green-600"
+                    >
+                      Guardar
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setEditantDespesa(despesa)}
+                      className="bg-blue-500 text-white px-2 py-1 rounded mr-2 hover:bg-blue-600"
+                    >
+                      Editar
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => eliminarDespesa(despesa.id)}
+                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <input
+            type="text"
+            value={novaDespesa.concepte}
+            onChange={(e) => setNovaDespesa({...novaDespesa, concepte: e.target.value})}
+            placeholder="Concepte"
+            className="p-2 border rounded"
+          />
+          <input
+            type="number"
+            value={novaDespesa.import}
+            onChange={(e) => setNovaDespesa({...novaDespesa, import: e.target.value})}
+            placeholder="Import"
+            className="p-2 border rounded"
+          />
+          <select
+            value={novaDespesa.pagador}
+            onChange={(e) => setNovaDespesa({...novaDespesa, pagador: e.target.value})}
+            className="p-2 border rounded"
+          >
+            <option value="">Selecciona pagador</option>
+            {participants.map((participant, index) => (
+              <option key={index} value={participant}>{participant}</option>
+            ))}
+          </select>
+        </div>
+        <button 
+          onClick={afegirDespesa}
+          className="mt-2 bg-blue-500 text-white px-4 py-2 rounded w-full hover:bg-blue-600"
+        >
+          Afegir Despesa
+        </button>
+      </div>
+
+      <div>
+        <h2 className="text-2xl font-semibold mb-4">Balanç Final</h2>
+        <ul>
+          {Object.entries(deutes).map(([participant, deute]) => (
+            <li key={participant} className="mb-2 flex justify-between items-center">
+              <span>{participant}</span>
+              <span className={deute >= 0 ? "text-green-600" : "text-red-600"}>
+                {deute.toFixed(2)} €
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
