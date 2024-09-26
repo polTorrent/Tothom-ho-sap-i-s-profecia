@@ -1,19 +1,16 @@
-// Firebase App (the core Firebase SDK) is always required and must be listed first
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 
-// Configuració de Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDBxhQpX4lOpoIFmdP9mp1xpHI37cNsjXQ",
-  authDomain: "profecia-bed60.firebaseapp.com",
-  projectId: "profecia-bed60",
-  storageBucket: "profecia-bed60.appspot.com",
-  messagingSenderId: "554283222723",
-  appId: "1:554283222723:web:663cbbc2e6ee334df38476",
-  measurementId: "G-KFWK66K2R9"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
-// Inicialitza Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
